@@ -1,0 +1,112 @@
+import type { Content } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
+
+// 👉 Your Gemini API Key yaha daalo
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+// Debug: Check if API key exists
+if (!API_KEY) {
+  console.error('❌ GEMINI_API_KEY is missing! Add it to .env.local');
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+// --- MODEL CONFIG ---
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",  
+});
+
+// --- SAFETY SETTINGS (optional but recommended) ---
+const safetySettings = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+  },
+];
+
+// ----------------------------------------------
+// 1️⃣ FUNCTION → Chatbot reply for Assistant.jsx
+// ----------------------------------------------
+export async function getChatResponse(history: any[], userInput: string) {
+  try {
+    // Gemini requires the history to start with a user turn and every entry must provide `parts`
+    const formattedHistory = history.reduce<Content[]>(
+      (acc, msg) => {
+        const text = typeof msg.text === "string" ? msg.text.trim() : "";
+        if (!text) {
+          return acc;
+        }
+
+        acc.push({
+          role: msg.role === "user" ? "user" : "model",
+          parts: [{ text }],
+        });
+
+        return acc;
+      },
+      [],
+    );
+
+    while (formattedHistory.length > 0 && formattedHistory[0]?.role !== "user") {
+      formattedHistory.shift();
+    }
+
+    const chatSession = model.startChat({
+      safetySettings,
+      history: formattedHistory,
+    });
+
+    const result = await chatSession.sendMessage(userInput);
+    return result.response.text();
+
+  } catch (error) {
+    console.error("Gemini chat error:", error);
+    return "Sorry, I couldn't process that. Please try again.";
+  }
+}
+
+// -----------------------------------------------------
+// 2️⃣ FUNCTION → Festival Insight for Festivals.jsx
+// -----------------------------------------------------
+export async function getFestivalDetails(festivalName: string) {
+  try {
+    const prompt = `Explain the cultural, historical, and tourism significance of the Indian festival "${festivalName}". 
+Make it short, helpful, and easy to understand for travelers.`;
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      safetySettings,
+    });
+
+    return result.response.text();
+
+  } catch (error) {
+    console.error("Festival fetch error:", error);
+    return "Sorry, unable to fetch festival details.";
+  }
+}
+
+export async function getSustainableRouteOptions(from: string, to: string) {
+  try {
+    const prompt = `Suggest 3-5 sustainable, eco-friendly travel options for going from "${from}" to "${to}" in India. For each, provide: name, short route, a one-sentence description, and top eco-friendly tips. Respond in markdown table format or as a short structured list.`;
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      safetySettings,
+    });
+
+    return result.response.text();
+
+  } catch (error) {
+    console.error("Eco route fetch error:", error);
+    return "Sorry, unable to fetch sustainable route options.";
+  }
+}

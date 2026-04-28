@@ -107,6 +107,9 @@ const App: React.FC = () => {
             
             {/* Admin Dashboard (public for now) */}
             <Route path="/admin" element={<AdminDashboard />} />
+            
+            {/* Catch-all - shows if routing works */}
+            <Route path="*" element={<Home />} />
           </Routes>
         </main>
         {/* Footer */}

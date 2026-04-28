@@ -57,6 +57,10 @@ const ScrollToTop: React.FC = () => {
 const App: React.FC = () => {
   const [isSafetyOpen, setIsSafetyOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    console.log('✅ DarShana App mounted successfully');
+  }, []);
+
   return (
     <AuthProvider>
       <HashRouter>
